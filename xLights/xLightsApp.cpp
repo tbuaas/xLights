@@ -525,6 +525,8 @@ bool xLightsApp::OnInit()
     {
         { wxCMD_LINE_SWITCH, "h", "help", "displays help on the command line parameters", wxCMD_LINE_VAL_NONE, wxCMD_LINE_OPTION_HELP },
         { wxCMD_LINE_SWITCH, "r", "render", "render files and exit"},
+        { wxCMD_LINE_SWITCH, "e", "export-video", "export video when rendering (use with -r)" },
+        { wxCMD_LINE_OPTION, "vo", "video-output", "video output directory or file path"},
         { wxCMD_LINE_SWITCH, "cs", "checksequence", "run check sequence and exit" },
         { wxCMD_LINE_OPTION, "m", "media", "specify media directory"},
         { wxCMD_LINE_OPTION, "s", "show", "specify show directory" },
@@ -676,9 +678,21 @@ bool xLightsApp::OnInit()
     }
 
     bool renderOnlyMode = false;
+    bool exportVideo = false;
+    wxString videoOutputPath;
+    
     if (readOnlyZipFile == "" &&  parser.Found("r")) {
         logger_base.info("-r: Render mode is ON");
         renderOnlyMode = true;
+        
+        if (parser.Found("e")) {
+            logger_base.info("-e: Video export mode is ON");
+            exportVideo = true;
+        }
+        
+        if (parser.Found("vo", &videoOutputPath)) {
+            logger_base.info("-vo: Video output path set to %s.", (const char *)videoOutputPath.c_str());
+        }
     }
 
     wxFileName xsqFile;
@@ -729,7 +743,14 @@ bool xLightsApp::OnInit()
     __frame = topFrame;
 
     if (renderOnlyMode) {
-        topFrame->CallAfter(&xLightsFrame::OpenRenderAndSaveSequencesF, sequenceFiles, xLightsFrame::RENDER_EXIT_ON_DONE);
+        int renderFlags = xLightsFrame::RENDER_EXIT_ON_DONE;
+        if (exportVideo) {
+            renderFlags |= xLightsFrame::RENDER_EXPORT_VIDEO;
+            if (!videoOutputPath.IsEmpty()) {
+                topFrame->SetVideoOutputPath(videoOutputPath);
+            }
+        }
+        topFrame->CallAfter(&xLightsFrame::OpenRenderAndSaveSequencesF, sequenceFiles, renderFlags);
     }
 
     if (readOnlyZipFile != "") {
