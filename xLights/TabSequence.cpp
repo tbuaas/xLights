@@ -1341,6 +1341,17 @@ void xLightsFrame::OpenRenderAndSaveSequences(const wxArrayString &origFilenames
                     wxFileName fn(xlightsFilename);
                     fn.SetExt("mp4");
                     videoPath = fn.GetFullPath();
+                } else {
+                    // Check if path is a directory - if so, append sequence name
+                    wxFileName vPath(videoPath);
+                    if (vPath.DirExists() || (!vPath.HasExt() && !vPath.FileExists())) {
+                        // Treat as directory - create output file in that directory
+                        wxFileName fn(xlightsFilename);
+                        fn.SetExt("mp4");
+                        wxFileName outFile(videoPath, fn.GetFullName());
+                        videoPath = outFile.GetFullPath();
+                    }
+                    // else treat as a file path and use as-is
                 }
                 SetStatusText(_("Exporting video to ") + videoPath);
                 if (ExportVideoPreview(videoPath)) {

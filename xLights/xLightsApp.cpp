@@ -693,6 +693,10 @@ bool xLightsApp::OnInit()
         if (parser.Found("vo", &videoOutputPath)) {
             logger_base.info("-vo: Video output path set to %s.", (const char *)videoOutputPath.c_str());
         }
+    } else if (parser.Found("e")) {
+        logger_base.error("-e: Export video flag requires -r (render mode)");
+        DisplayError(_("The --export-video (-e) flag requires --render (-r) mode to be enabled."));
+        return false;
     }
 
     wxFileName xsqFile;
@@ -747,6 +751,20 @@ bool xLightsApp::OnInit()
         if (exportVideo) {
             renderFlags |= xLightsFrame::RENDER_EXPORT_VIDEO;
             if (!videoOutputPath.IsEmpty()) {
+                // Validate video output path when rendering multiple sequences
+                if (sequenceFiles.size() > 1) {
+                    wxFileName vPath(videoOutputPath);
+                    if (vPath.FileExists() || (!vPath.DirExists() && vPath.HasExt())) {
+                        // Looks like a file path, not a directory - warn user
+                        logger_base.warn("-vo: When rendering multiple sequences, video output should be a directory, not a file. Using default naming.");
+                        wxString msg = wxString::Format(
+                            "Warning: Rendering %d sequences with a single video output file path.\n"
+                            "Each sequence will overwrite the previous video.\n"
+                            "Consider using a directory path or omitting -vo to use default naming.",
+                            (int)sequenceFiles.size());
+                        DisplayWarning(msg);
+                    }
+                }
                 topFrame->SetVideoOutputPath(videoOutputPath);
             }
         }

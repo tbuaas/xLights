@@ -65,7 +65,10 @@ xLights -s <show_directory> -r -e -vo <output_path> <sequence.xsq>
 - `-s` or `--show`: Specify the show directory containing `xlights_rgbeffects.xml`
 - `-r` or `--render`: Enable render mode (renders and exits)
 - `-e` or `--export-video`: Enable video export during rendering
-- `-vo` or `--video-output`: (Optional) Specify video output path or directory
+- `-vo` or `--video-output`: (Optional) Specify video output path
+  - If a **directory**: Videos are created in that directory with sequence name + .mp4
+  - If a **file path**: Video is written to that exact path (useful for single sequence)
+  - If **omitted**: Videos are created next to FSEQ files with .mp4 extension
 - Sequence files: One or more `.xsq` files to render
 
 ### Examples
@@ -76,15 +79,22 @@ xLights -s /home/user/myshow -r -e Christmas2024.xsq
 # Output: Christmas2024.fseq and Christmas2024.mp4
 ```
 
-Render with custom video output path:
+Render with custom video output file:
 ```bash
 xLights -s /home/user/myshow -r -e -vo /home/user/videos/christmas.mp4 Christmas2024.xsq
+# Output: /home/user/videos/christmas.mp4
+```
+
+Render with video output directory (recommended for multiple sequences):
+```bash
+xLights -s /home/user/myshow -r -e -vo /home/user/videos/ seq1.xsq seq2.xsq
+# Output: /home/user/videos/seq1.mp4, /home/user/videos/seq2.mp4
 ```
 
 Batch render multiple sequences to video:
 ```bash
 xLights -s /home/user/myshow -r -e seq1.xsq seq2.xsq seq3.xsq
-# Outputs: seq1.mp4, seq2.mp4, seq3.mp4 (plus FSEQ files)
+# Outputs: seq1.mp4, seq2.mp4, seq3.mp4 (plus FSEQ files, in sequence directory)
 ```
 
 ### Output
@@ -133,6 +143,9 @@ fi
 ### CI/CD Pipeline Integration
 ```yaml
 # Example GitHub Actions workflow
+# NOTE: This example assumes xLights is available in a PPA or package repository.
+# Adjust the installation method based on your environment and verify that
+# the installed version includes the video export feature.
 name: Render Sequences
 on: [push]
 jobs:
@@ -142,10 +155,12 @@ jobs:
       - uses: actions/checkout@v2
       - name: Install xLights
         run: |
-          # Add xLights PPA or install from package
+          # Example: Add xLights PPA (verify version/availability)
           sudo add-apt-repository ppa:chris-debenham/xlights
           sudo apt-get update
           sudo apt-get install xlights
+          # Alternative: Download specific release from GitHub
+          # wget https://github.com/xLightsSequencer/xLights/releases/download/...
       - name: Render sequences
         run: |
           xLights -s ./show -r -e *.xsq
