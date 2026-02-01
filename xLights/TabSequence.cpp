@@ -1207,10 +1207,10 @@ void xLightsFrame::OpenAndCheckSequence(const wxArrayString& origFilenames, bool
 
 void xLightsFrame::OpenRenderAndSaveSequencesF(const wxArrayString& origFileNames, int flags)
 {
-    OpenRenderAndSaveSequences(origFileNames, flags & RENDER_EXIT_ON_DONE, flags & RENDER_ALREADY_RETRIED);
+    OpenRenderAndSaveSequences(origFileNames, flags & RENDER_EXIT_ON_DONE, flags & RENDER_ALREADY_RETRIED, flags & RENDER_EXPORT_VIDEO);
 }
 
-void xLightsFrame::OpenRenderAndSaveSequences(const wxArrayString &origFilenames, bool exitOnDone, bool alreadyRetried) {
+void xLightsFrame::OpenRenderAndSaveSequences(const wxArrayString &origFilenames, bool exitOnDone, bool alreadyRetried, bool exportVideo) {
     static log4cpp::Category &logger_base = log4cpp::Category::getInstance(std::string("log_base"));
 
     if (origFilenames.IsEmpty()) {
@@ -1314,7 +1314,7 @@ void xLightsFrame::OpenRenderAndSaveSequences(const wxArrayString &origFilenames
     RenderIseqData(true, nullptr); // render ISEQ layers below the Nutcracker layer
     logger_base.info("   iseq below effects done.");
     ProgressBar->SetValue(10);
-    RenderGridToSeqData([this, sw, fileNames, exitOnDone, alreadyRetried] (bool aborted) {
+    RenderGridToSeqData([this, sw, fileNames, exitOnDone, alreadyRetried, exportVideo] (bool aborted) {
         static log4cpp::Category &logger_base = log4cpp::Category::getInstance(std::string("log_base"));
         logger_base.info("   Effects done.");
         ProgressBar->SetValue(90);
@@ -1331,6 +1331,37 @@ void xLightsFrame::OpenRenderAndSaveSequences(const wxArrayString &origFilenames
             SetStatusText(_("Saving ") + xlightsFilename + _(" ... Writing fseq."));
             WriteFalconPiFile(xlightsFilename);
             logger_base.info("fseq file done.");
+            
+            // Export video if requested
+            if (exportVideo) {
+                logger_base.info("Exporting video.");
+                wxString videoPath = _videoOutputPath;
+                if (videoPath.IsEmpty()) {
+                    // Default to sequence name with .mp4 extension
+                    wxFileName fn(xlightsFilename);
+                    fn.SetExt("mp4");
+                    videoPath = fn.GetFullPath();
+                } else {
+                    // Check if path is a directory - if so, append sequence name
+                    wxFileName vPath(videoPath);
+                    if (vPath.DirExists() || (!vPath.HasExt() && !vPath.FileExists())) {
+                        // Treat as directory - create output file in that directory
+                        wxFileName fn(xlightsFilename);
+                        fn.SetExt("mp4");
+                        wxFileName outFile(videoPath, fn.GetFullName());
+                        videoPath = outFile.GetFullPath();
+                    }
+                    // else treat as a file path and use as-is
+                }
+                SetStatusText(_("Exporting video to ") + videoPath);
+                if (ExportVideoPreview(videoPath)) {
+                    logger_base.info("Video export complete: %s", (const char*)videoPath.c_str());
+                } else {
+                    logger_base.error("Video export failed");
+                    printf("ERROR: Video export failed\n");
+                }
+            }
+            
             DisplayXlightsFilename(xlightsFilename);
             float elapsedTime = sw.Time() / 1000.0; // now stop stopwatch timer and get elapsed time. change into seconds from ms
             wxString displayBuff = wxString::Format(_("%s     Updated in %7.3f seconds"), xlightsFilename, elapsedTime);
@@ -1341,10 +1372,18 @@ void xLightsFrame::OpenRenderAndSaveSequences(const wxArrayString &origFilenames
 
             auto nFileNames = fileNames;
             nFileNames.RemoveAt(0);
-            CallAfter(&xLightsFrame::OpenRenderAndSaveSequencesF, nFileNames, (exitOnDone ? RENDER_EXIT_ON_DONE : 0));
+            int renderFlags = (exitOnDone ? RENDER_EXIT_ON_DONE : 0);
+            if (exportVideo) {
+                renderFlags |= RENDER_EXPORT_VIDEO;
+            }
+            CallAfter(&xLightsFrame::OpenRenderAndSaveSequencesF, nFileNames, renderFlags);
         } else {
             logger_base.info("Render was aborted, retrying.");
-            CallAfter(&xLightsFrame::OpenRenderAndSaveSequencesF, fileNames, (exitOnDone ? RENDER_EXIT_ON_DONE : 0) | RENDER_ALREADY_RETRIED);
+            int renderFlags = (exitOnDone ? RENDER_EXIT_ON_DONE : 0) | RENDER_ALREADY_RETRIED;
+            if (exportVideo) {
+                renderFlags |= RENDER_EXPORT_VIDEO;
+            }
+            CallAfter(&xLightsFrame::OpenRenderAndSaveSequencesF, fileNames, renderFlags);
         }
     } );
 }

@@ -1466,6 +1466,7 @@ public:
     std::string showDirectory;
     std::list<std::string> mediaDirectories;
     std::string fseqDirectory;
+    wxString _videoOutputPath;
     std::string renderCacheDirectory;
     std::string _backupDirectory;
     SeqDataType _seqData;
@@ -1602,8 +1603,11 @@ protected:
     void CreateMissingDirectories(wxString targetDirName, wxString lastCreatedDirectory, std::string& errors);
     static constexpr int RENDER_EXIT_ON_DONE = 1;
     static constexpr int RENDER_ALREADY_RETRIED = 2;
+    static constexpr int RENDER_EXPORT_VIDEO = 4;
     void OpenRenderAndSaveSequencesF(const wxArrayString &filenames, int flags);
-    void OpenRenderAndSaveSequences(const wxArrayString& filenames, bool exitOnDone, bool alreadyRetried = false);
+    void OpenRenderAndSaveSequences(const wxArrayString& filenames, bool exitOnDone, bool alreadyRetried = false, bool exportVideo = false);
+    void SetVideoOutputPath(const wxString& path) { _videoOutputPath = path; }
+    wxString GetVideoOutputPath() const { return _videoOutputPath; }
     void OpenAndCheckSequence(const wxArrayString& origFilenames, bool exitOnDone);
     std::string OpenAndCheckSequence(const std::string& origFilenames);
     void AddAllModelsToSequence();
